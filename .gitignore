@@ -1,0 +1,24 @@
+# Dependencies
+**/node_modules
+
+# Builds
+backend/dist
+frontend/.next
+frontend/out
+**/*.tsbuildinfo
+
+# Env
+**/.env
+**/.env*.local
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Coverage
+**/coverage
+
+#Doc
+Docs

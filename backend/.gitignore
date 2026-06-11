@@ -1,0 +1,29 @@
+# Dependencies
+/node_modules
+
+# Build output
+/dist
+/build
+*.tsbuildinfo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Test / coverage
+/coverage
+
+# Prisma — KHÔNG ignore migrations & schema (cần commit).
+# Chỉ bỏ qua client tự sinh nếu cấu hình output vào trong repo:
+# /prisma/generated
+
+# OS / editor
+.DS_Store
+*.swp
