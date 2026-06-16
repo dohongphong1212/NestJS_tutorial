@@ -1,11 +1,26 @@
 'use client';
 
-import { useState } from 'react';
-import { login, register, type AuthUser } from '@/lib/api';
-
-type Mode = 'login' | 'register';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { login, me, register } from '@/lib/api';
+import type { AuthUser, Mode } from '@/types/auth';
+import { Background } from '@/components/Background';
+import { Spinner } from '@/components/ui/Spinner';
+import { Field } from '@/components/ui/Field';
+import { TabButton } from '@/components/ui/TabButton';
+import { SuccessView } from '@/components/auth/SuccessView';
+import {
+  IconAlert,
+  IconAt,
+  IconEye,
+  IconEyeOff,
+  IconLock,
+  IconMail,
+  IconUser,
+} from '@/components/icons';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>('login');
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
@@ -16,6 +31,23 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
+
+  // Đã có phiên hợp lệ (mở lại khi token còn hạn) -> vào thẳng trang chủ,
+  // không bắt đăng nhập lại.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await me();
+        if (active) router.replace('/home');
+      } catch {
+        // Chưa đăng nhập -> ở lại trang này.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +60,8 @@ export default function LoginPage() {
           ? await login(username, password)
           : await register(name, username, email, password);
       setUser(res);
+      // Hiện màn hình chào mừng một nhịp ngắn rồi vào trang chủ.
+      setTimeout(() => router.replace('/home'), 900);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Đã có lỗi xảy ra.');
     } finally {
@@ -37,15 +71,7 @@ export default function LoginPage() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      {/* ===== Nền tĩnh (vẽ một lần, không animation -> không lag) ===== */}
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        {/* Quầng sáng tĩnh bằng radial-gradient (rẻ hơn nhiều so với blur lớn) */}
-        <div className="absolute inset-0 bg-[radial-gradient(40rem_30rem_at_15%_15%,rgba(217,70,239,0.18),transparent),radial-gradient(40rem_30rem_at_85%_85%,rgba(34,211,238,0.16),transparent),radial-gradient(45rem_35rem_at_60%_30%,rgba(99,102,241,0.16),transparent)]" />
-        {/* Lưới mờ tĩnh */}
-        <div className="absolute inset-0 opacity-[0.10] [background-image:linear-gradient(to_right,rgba(255,255,255,0.6)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:60px_60px] [mask-image:radial-gradient(ellipse_at_center,black,transparent_75%)]" />
-        {/* Vignette */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,#05030f_95%)]" />
-      </div>
+      <Background />
 
       {/* ===== Thẻ kính ===== */}
       <div className="relative w-full max-w-md animate-card-in">
@@ -201,9 +227,7 @@ export default function LoginPage() {
                 >
                   <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
                   <span className="relative flex items-center justify-center gap-2">
-                    {loading && (
-                      <span className="h-4 w-4 animate-spin-slow rounded-full border-2 border-white/40 border-t-white" />
-                    )}
+                    {loading && <Spinner />}
                     {loading
                       ? 'Đang xử lý...'
                       : mode === 'login'
@@ -247,177 +271,5 @@ export default function LoginPage() {
         </div>
       </div>
     </main>
-  );
-}
-
-/* ===================== Thành phần phụ ===================== */
-
-function SuccessView({ user, mode }: { user: AuthUser; mode: Mode }) {
-  return (
-    <div className="flex flex-col items-center py-6 text-center animate-card-in">
-      <div className="mb-5 grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-emerald-400 to-cyan-400 shadow-[0_0_50px_-6px_rgba(16,185,129,0.9)]">
-        <svg
-          className="h-10 w-10 text-white"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M20 6 9 17l-5-5" />
-        </svg>
-      </div>
-      <h2 className="text-2xl font-bold text-white">
-        {mode === 'login' ? 'Đăng nhập thành công!' : 'Tạo tài khoản thành công!'}
-      </h2>
-      <p className="mt-2 text-white/60">
-        Xin chào{' '}
-        <span className="font-semibold text-violet-300">{user.name}</span>, rất
-        vui được gặp lại bạn.
-      </p>
-      <div className="mt-4 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/50">
-        {user.email}
-      </div>
-    </div>
-  );
-}
-
-function TabButton({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-lg py-2 font-medium transition-all ${
-        active
-          ? 'bg-gradient-to-r from-violet-500/80 to-fuchsia-500/80 text-white shadow-lg'
-          : 'text-white/50 hover:text-white/80'
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Field({
-  label,
-  icon,
-  value,
-  onChange,
-  type,
-  placeholder,
-  autoComplete,
-  trailing,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  value: string;
-  onChange: (v: string) => void;
-  type: string;
-  placeholder?: string;
-  autoComplete?: string;
-  trailing?: React.ReactNode;
-}) {
-  return (
-    <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-white/70">
-        {label}
-      </span>
-      <div className="group relative flex items-center rounded-xl border border-white/10 bg-white/5 transition-all focus-within:border-violet-400/60 focus-within:bg-white/[0.08] focus-within:shadow-[0_0_0_4px_rgba(139,92,246,0.15)]">
-        <span className="pl-3.5 text-white/40 transition group-focus-within:text-violet-300">
-          {icon}
-        </span>
-        <input
-          required
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          autoComplete={autoComplete}
-          className="w-full bg-transparent px-3 py-3 text-white placeholder:text-white/30 focus:outline-none"
-        />
-        {trailing && <span className="pr-3.5">{trailing}</span>}
-      </div>
-    </label>
-  );
-}
-
-/* ===================== Icon ===================== */
-
-const iconProps = {
-  className: 'h-5 w-5',
-  viewBox: '0 0 24 24',
-  fill: 'none',
-  stroke: 'currentColor',
-  strokeWidth: 2,
-  strokeLinecap: 'round' as const,
-  strokeLinejoin: 'round' as const,
-};
-
-function IconUser() {
-  return (
-    <svg {...iconProps}>
-      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
-      <circle cx="12" cy="7" r="4" />
-    </svg>
-  );
-}
-function IconMail() {
-  return (
-    <svg {...iconProps}>
-      <rect width="20" height="16" x="2" y="4" rx="2" />
-      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
-    </svg>
-  );
-}
-function IconAt() {
-  return (
-    <svg {...iconProps}>
-      <circle cx="12" cy="12" r="4" />
-      <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
-    </svg>
-  );
-}
-function IconLock() {
-  return (
-    <svg {...iconProps}>
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-function IconEye() {
-  return (
-    <svg {...iconProps}>
-      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
-function IconEyeOff() {
-  return (
-    <svg {...iconProps}>
-      <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
-      <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
-      <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
-      <line x1="2" x2="22" y1="2" y2="22" />
-    </svg>
-  );
-}
-function IconAlert() {
-  return (
-    <svg {...iconProps} className="h-5 w-5 shrink-0">
-      <circle cx="12" cy="12" r="10" />
-      <line x1="12" x2="12" y1="8" y2="12" />
-      <line x1="12" x2="12.01" y1="16" y2="16" />
-    </svg>
   );
 }

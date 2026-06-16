@@ -27,3 +27,6 @@ pnpm-debug.log*
 # OS / editor
 .DS_Store
 *.swp
+
+# Script demo cục bộ (không commit)
+demo-*.sh
